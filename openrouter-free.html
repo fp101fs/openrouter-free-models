@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenRouter Free Models Tracker</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card-bg: #1e293b;
+            --text: #f8fafc;
+            --accent: #38bdf8;
+            --border: #334155;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            max-width: 900px;
+            width: 100%;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 1rem;
+        }
+        h1 { margin: 0; font-size: 1.5rem; color: var(--accent); }
+        .controls { display: flex; gap: 10px; }
+        input {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            outline: none;
+        }
+        .model-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1rem;
+        }
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            padding: 1.2rem;
+            border-radius: 12px;
+            transition: transform 0.2s;
+        }
+        .card:hover { transform: translateY(-2px); border-color: var(--accent); }
+        .model-name { font-weight: bold; margin-bottom: 0.5rem; display: block; font-size: 1.1rem; }
+        .model-id { 
+            font-family: monospace; 
+            font-size: 0.85rem; 
+            color: #94a3b8; 
+            background: #0f172a; 
+            padding: 4px 8px; 
+            border-radius: 4px;
+            display: block;
+            margin-bottom: 1rem;
+            word-break: break-all;
+        }
+        .badge {
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 99px;
+            background: #0ea5e9;
+            color: white;
+            font-weight: 600;
+        }
+        .stats { font-size: 0.85rem; color: #cbd5e1; display: flex; justify-content: space-between;}
+        #loader { font-style: italic; color: var(--accent); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div>
+            <h1>OpenRouter <span style="color:white">Free Tier</span></h1>
+            <p id="count">Loading models...</p>
+        </div>
+        <div class="controls">
+            <input type="text" id="search" placeholder="Filter models..." onkeyup="filterModels()">
+        </div>
+    </header>
+
+    <div id="loader">Fetching latest data from OpenRouter API...</div>
+    <div class="model-grid" id="grid"></div>
+</div>
+
+<script>
+    let allFreeModels = [];
+
+    async function fetchModels() {
+        try {
+            const response = await fetch('https://openrouter.ai/api/v1/models');
+            const json = await response.json();
+            
+            // Filter logic: pricing.prompt and pricing.completion both must be "0"
+            allFreeModels = json.data.filter(m => 
+                parseFloat(m.pricing.prompt) === 0 && 
+                parseFloat(m.pricing.completion) === 0
+            );
+
+            document.getElementById('loader').style.display = 'none';
+            renderModels(allFreeModels);
+        } catch (err) {
+            document.getElementById('loader').innerText = "Error loading models. Check your internet connection.";
+            console.error(err);
+        }
+    }
+
+    function renderModels(models) {
+        const grid = document.getElementById('grid');
+        const countDisplay = document.getElementById('count');
+        grid.innerHTML = '';
+        
+        countDisplay.innerText = `Showing ${models.length} completely free models`;
+
+        models.forEach(m => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+                <span class="model-name">${m.name}</span>
+                <span class="model-id">${m.id}</span>
+                <div class="stats">
+                    <span>Ctx: ${(m.context_length / 1024).toFixed(0)}k</span>
+                    <span class="badge">FREE</span>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+    }
+
+    function filterModels() {
+        const query = document.getElementById('search').value.toLowerCase();
+        const filtered = allFreeModels.filter(m => 
+            m.name.toLowerCase().includes(query) || 
+            m.id.toLowerCase().includes(query)
+        );
+        renderModels(filtered);
+    }
+
+    // Start the fetch on load
+    fetchModels();
+</script>
+
+</body>
+</html>
